@@ -152,6 +152,7 @@ static void loadRegistry(io_registry_entry_t entry) {
     io_iterator_t childIterator;
     io_object_t child;
     IORegistryEntryGetChildIterator(entry, kIOServicePlane, &childIterator);
+    IOObjectRelease(entry);
     while ((child = IOIteratorNext(childIterator))) {
         io_name_t name;
         IORegistryEntryGetName(child, name);
@@ -176,11 +177,11 @@ static io_registry_entry_t findNode(io_registry_entry_t entry, const io_name_t n
     io_iterator_t childIterator;
     io_object_t child;
     IORegistryEntryGetChildIterator(entry, kIOServicePlane, &childIterator);
+    IOObjectRelease(entry);
     while ((child = IOIteratorNext(childIterator))) {
         entry = findNode(child,name);
         if (!entry) continue;
         // We have found the entry so return
-        IOObjectRelease(childIterator);
         return entry;
     }
     IOObjectRelease(childIterator);
