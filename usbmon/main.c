@@ -73,7 +73,6 @@ void marshall(io_registry_entry_t entry) {
     // clean up
     CFDictionaryRemoveAllValues(properties);
     CFRelease(properties);
-   
 }
 
 /*---------------------------------------------------------------------------------------
@@ -136,8 +135,6 @@ static void registryEntry(io_registry_entry_t entry) {
                 exit(0);
             }
         } // case IOUSBInterface
-            
-    
      } // switch
 }
 /*--------------------------------------------------------------------------
@@ -145,19 +142,17 @@ static void registryEntry(io_registry_entry_t entry) {
  *--------------------------------------------------------------------------*/
 static void loadRegistry(io_registry_entry_t entry) {
     io_name_t name;
+    io_iterator_t childIterator;
+    io_object_t child;
     IORegistryEntryGetName(entry, name);
     PRINTF("Starting %s \n", name);
     registryEntry( entry);
-    
-    io_iterator_t childIterator;
-    io_object_t child;
     IORegistryEntryGetChildIterator(entry, kIOServicePlane, &childIterator);
     IOObjectRelease(entry);
     while ((child = IOIteratorNext(childIterator))) {
         io_name_t name;
         IORegistryEntryGetName(child, name);
         loadRegistry(child);
-        IOObjectRelease(child);
     }
     IOObjectRelease(childIterator);
     PRINTF("Finishing %s \n", name);
@@ -207,27 +202,19 @@ void usage(void) {
 }
 
 void monitor(void) {
-    while (true) {
-        // copy current status dictionary to last dictionary.  clear current status.
-       
-       // printf("------------------------------------------\n");
-        clearDict();
-       loadRegistry(rootNode);
-        //printDict();
-      
-        // check to see if anything was removed
-        //printBackup();
-        removals();
-        //printf("**************** HISTORY ****************\n");
-        makeBackup();
-       
-       // printf("****************************************\n");
-        //printBackup();
-        // sleep and do it again.
-        sleep(10);
-       // PRINTF("loop\n");
-    }
-}
+    // copy current status dictionary to last dictionary.  clear current status.
+    IOMainPort(MACH_PORT_NULL, &masterPort);
+    rootNode = IORegistryGetRootEntry(masterPort);
+    // locate the start of the USB tree.
+    rootNode = findNode(rootNode, "AppleUSBLegacyRoot");
+    clearDict();
+    loadRegistry(rootNode);
+    // check to see if anything was removed
+    removals();
+    // store the backup copy of the device dictionary
+    makeBackup();
+
+  }
 
 int main( int argc, char *const *argv) {
     /*-------------------------------------------------------------------
@@ -236,12 +223,7 @@ int main( int argc, char *const *argv) {
     Handler = signal( SIGINT, SignalHandler );
     if( Handler == SIG_ERR ) printf( "Warning control-c will not work. Handler setup failed.\n" );
     // prepare IORegistry access
-    IOMainPort(MACH_PORT_NULL, &masterPort);
-    rootNode = IORegistryGetRootEntry(masterPort);
-    // locate the start of the USB tree.
-    rootNode = findNode(rootNode, "AppleUSBLegacyRoot");
-    loadRegistry(rootNode);
-    makeBackup();
+    monitor();
     firstTime = FALSE;
     /*-------------------------------------------------------------------
      * parameter parsing
@@ -294,7 +276,10 @@ int main( int argc, char *const *argv) {
         printf("%s : --------- Begin USB Event Monitoring ------------------\n",timeString);
     }
     fflush(stdout);
-    monitor();       // this will never return.
+    while (true) {
+        monitor();
+        sleep(10);
+   }
     
     
 }
