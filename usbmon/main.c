@@ -177,6 +177,7 @@ static io_registry_entry_t findNode(io_registry_entry_t entry, const io_name_t n
         entry = findNode(child,name);
         if (!entry) continue;
         // We have found the entry so return
+        IOObjectRelease(childIterator);
         return entry;
     }
     IOObjectRelease(childIterator);
